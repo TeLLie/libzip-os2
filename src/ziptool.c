@@ -40,9 +40,14 @@
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
 #endif
-#ifdef _WIN32
-/* WIN32 needs <fcntl.h> for _O_BINARY */
+#if defined(_WIN32) || defined(__OS2__)
+/* WIN32 and OS2 needs <fcntl.h> for _O_BINARY */
 #include <fcntl.h>
+#ifdef __OS2__
+#define _setmode    setmode
+#define _fileno     fileno
+#define _O_BINARY   O_BINARY
+#endif
 #ifndef STDIN_FILENO
 #define STDIN_FILENO _fileno(stdin)
 #endif
@@ -176,8 +181,8 @@ cat(int argc, char *argv[]) {
     int err;
     idx = strtoull(argv[0], NULL, 10);
 
-#ifdef _WIN32
-    /* Need to set stdout to binary mode for Windows */
+#if defined(_WIN32) || defined(__OS2__)
+    /* Need to set stdout to binary mode for Windows and OS2 */
     setmode(fileno(stdout), _O_BINARY);
 #endif
     if ((zf = zip_fopen_index(za, idx, 0)) == NULL) {
