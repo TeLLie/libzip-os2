@@ -54,7 +54,6 @@ zip_source_file_common_new(const char *fname, void *file, zip_uint64_t start, zi
     zip_source_file_context_t *ctx;
     zip_source_t *zs;
     zip_source_file_stat_t sb;
-    zip_uint64_t length;
 
     if (ops == NULL) {
         zip_error_set(error, ZIP_ER_INVAL, 0);
@@ -83,17 +82,10 @@ zip_source_file_common_new(const char *fname, void *file, zip_uint64_t start, zi
     }
 
     if (len < 0) {
-        if (len == -1) {
-            len = ZIP_LENGTH_TO_END;
-        }
-        // TODO: return ZIP_ER_INVAL if len != ZIP_LENGTH_UNCHECKED?
-        length = 0;
-    }
-    else {
-        length = (zip_uint64_t)len;
+        len = 0;
     }
 
-    if (start > ZIP_INT64_MAX || start + length < start) {
+    if (start > ZIP_INT64_MAX || start + (zip_uint64_t)len < start) {
         zip_error_set(error, ZIP_ER_INVAL, 0);
         return NULL;
     }
@@ -115,7 +107,7 @@ zip_source_file_common_new(const char *fname, void *file, zip_uint64_t start, zi
     }
     ctx->f = file;
     ctx->start = start;
-    ctx->len = length;
+    ctx->len = (zip_uint64_t)len;
     if (st) {
         (void)memcpy_s(&ctx->st, sizeof(ctx->st), st, sizeof(*st));
         ctx->st.name = NULL;
@@ -177,11 +169,9 @@ zip_source_file_common_new(const char *fname, void *file, zip_uint64_t start, zi
             }
 
             if (ctx->len == 0) {
-                if (len != ZIP_LENGTH_UNCHECKED) {
-                    ctx->len = sb.size - ctx->start;
-                    ctx->st.size = ctx->len;
-                    ctx->st.valid |= ZIP_STAT_SIZE;
-                }
+                ctx->len = sb.size - ctx->start;
+                ctx->st.size = ctx->len;
+                ctx->st.valid |= ZIP_STAT_SIZE;
 
                 /* when using a partial file, don't allow writing */
                 if (ctx->fname && start == 0 && ops->write != NULL) {

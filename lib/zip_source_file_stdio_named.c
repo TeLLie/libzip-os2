@@ -101,7 +101,7 @@ zip_source_file(zip_t *za, const char *fname, zip_uint64_t start, zip_int64_t le
 
 ZIP_EXTERN zip_source_t *
 zip_source_file_create(const char *fname, zip_uint64_t start, zip_int64_t length, zip_error_t *error) {
-    if (fname == NULL || length < ZIP_LENGTH_UNCHECKED) {
+    if (fname == NULL || length < -1) {
         zip_error_set(error, ZIP_ER_INVAL, 0);
         return NULL;
     }
@@ -291,7 +291,7 @@ static int create_temp_file(zip_source_file_context_t *ctx, bool create_file) {
     char *temp;
     int mode;
     struct stat st;
-    int fd = 0;
+    int fd;
     char *start, *end;
     
     if (stat(ctx->fname, &st) == 0) {
@@ -359,7 +359,7 @@ static int create_temp_file(zip_source_file_context_t *ctx, bool create_file) {
     
     ctx->tmpname = temp;
     
-    return fd; /* initialized to 0 if !create_file */
+    return create_file ? fd : 0;
 }
 
 
