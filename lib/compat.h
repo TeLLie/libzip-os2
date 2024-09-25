@@ -44,7 +44,7 @@
 /* to have ISO C secure library functions */
 #define __STDC_WANT_LIB_EXT1__ 1
 
-#ifdef _WIN32
+#if defined(_WIN32) || defined(__OS2__)
 #ifndef ZIP_EXTERN
 #ifndef ZIP_STATIC
 #define ZIP_EXTERN __declspec(dllexport)
