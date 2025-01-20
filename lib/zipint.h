@@ -102,7 +102,8 @@
 /* according to unzip-6.0's zipinfo.c, this corresponds to a directory with rwx permissions for everyone */
 #define ZIP_EXT_ATTRIB_DEFAULT_DIR (0040777u << 16)
 
-#define ZIP_FILE_ATTRIBUTES_GENERAL_PURPOSE_BIT_FLAGS_ALLOWED_MASK 0x0836
+/* Allowed: Encryption specific bits, data descriptor, compression specific, UTF-8 filename */
+#define ZIP_FILE_ATTRIBUTES_GENERAL_PURPOSE_BIT_FLAGS_ALLOWED_MASK 0x083e
 
 #define ZIP_MAX(a, b) ((a) > (b) ? (a) : (b))
 #define ZIP_MIN(a, b) ((a) < (b) ? (a) : (b))
@@ -152,7 +153,7 @@ struct zip_compression_algorithm {
     bool (*input)(void *ctx, zip_uint8_t *data, zip_uint64_t length);
 
     /* all input data has been provided */
-    void (*end_of_input)(void *ctx);
+    bool (*end_of_input)(void *ctx);
 
     /* process input data, writing to data, which has room for length bytes, update length to number of bytes written */
     zip_compression_status_t (*process)(void *ctx, zip_uint8_t *data, zip_uint64_t *length);
@@ -241,6 +242,7 @@ extern const int _zip_err_details_count;
 #define ZIP_ER_DETAIL_EOCD64_LOCATOR_MISMATCH 22 /* G EOCD64 and EOCD64 locator do not match */
 #define ZIP_ER_DETAIL_UTF8_FILENAME_MISMATCH 23 /* E UTF-8 filename is ASCII and doesn't match filename */
 #define ZIP_ER_DETAIL_UTF8_COMMENT_MISMATCH 24 /* E UTF-8 comment is ASCII and doesn't match comment */
+#define ZIP_ER_DETAIL_COMPRESSED_DATA_TRAILING_GARBAGE 25 /* G garbage at end of compressed data */
 
 /* directory entry: general purpose bit flags */
 
@@ -314,6 +316,7 @@ struct zip {
     zip_progress_t *progress; /* progress callback for zip_close() */
 
     zip_uint32_t* write_crc; /* have _zip_write() compute CRC */
+    time_t torrent_mtime;
 };
 
 /* file in zip archive, part of API */
@@ -346,6 +349,7 @@ struct zip_dirent {
     bool cloned;                  /*      whether this instance is cloned, and thus shares non-changed strings */
 
     bool crc_valid; /*      if CRC is valid (sometimes not for encrypted archives) */
+    bool last_mod_mtime_valid;
 
     zip_uint16_t version_madeby;     /* (c)  version of creator */
     zip_uint16_t version_needed;     /* (cl) version needed to extract */
@@ -366,6 +370,8 @@ struct zip_dirent {
     zip_uint32_t compression_level; /*      level of compression to use (never valid in orig) */
     zip_uint16_t encryption_method; /*      encryption method, computed from other fields */
     char *password;                 /*      file specific encryption password */
+
+    time_t last_mod_mtime;          /*      cached last_mod in Unix time format */
 };
 
 /* zip archive central directory */
@@ -548,11 +554,12 @@ zip_int64_t _zip_cdir_write(zip_t *za, const zip_filelist_t *filelist, zip_uint6
 time_t _zip_d2u_time(const zip_dostime_t*);
 void _zip_deregister_source(zip_t *za, zip_source_t *src);
 
-void _zip_dirent_apply_attributes(zip_dirent_t *, zip_file_attributes_t *, bool, zip_uint32_t);
+bool _zip_dirent_apply_attributes(zip_dirent_t *, zip_file_attributes_t *, bool, zip_uint32_t);
 int zip_dirent_check_consistency(zip_dirent_t *dirent);
 zip_dirent_t *_zip_dirent_clone(const zip_dirent_t *);
 void _zip_dirent_free(zip_dirent_t *);
 void _zip_dirent_finalize(zip_dirent_t *);
+time_t zip_dirent_get_last_mod_mtime(zip_dirent_t *de);
 void _zip_dirent_init(zip_dirent_t *);
 bool _zip_dirent_needs_zip64(const zip_dirent_t *, zip_flags_t);
 zip_dirent_t *_zip_dirent_new(void);
